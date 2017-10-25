@@ -79,30 +79,31 @@ input              pl2pe_hard_reset_req;
 input              pl2pe_cable_reset_req;
 
 
-localparam PE_SRC_STARTUP                   = 4'd0
-localparam PE_SRC_DISCOVERY                 = 4'd1
-localparam PE_SRC_SEND_CAPABILITIES         = 4'd2
-localparam PE_SRC_NEGOTIATE_CAPABILITY      = 4'd3
-localparam PE_SRC_TRANSITION_SUPPLY         = 4'd4
-localparam PE_SRC_READY                     = 4'd5
-localparam PE_SRC_DISABLED                  = 4'd6
-localparam PE_SRC_CAPABILITY_RESPONSE       = 4'd7
-localparam PE_SRC_HARD_RESET                = 4'd8
-localparam PE_SRC_HARD_RESET_RECEIVED       = 4'd9
-localparam PE_SRC_TRANSITION_TO_DEFAULT     = 4'd10
-localparam PE_SRC_SEND_SOFT_RESET           = 4'd13
-localparam PE_SRC_SOFT_RESET                = 4'd14
-PE_SRC_SEND_SOURCE_ALERT
-PE_SRC_GIVE_PPS_STATUS
-PE_BIST_CARRIER_MODE
-localparam NA_STATE                         = 4'd15
+localparam PE_SRC_STARTUP                   = 5'd00;
+localparam PE_SRC_DISCOVERY                 = 5'd01;
+localparam PE_SRC_DISABLED                  = 5'd02;
+localparam PE_SRC_SEND_CAPABILITIES         = 5'd03;
+localparam PE_SRC_NEGOTIATE_CAPABILITY      = 5'd04;
+localparam PE_SRC_TRANSITION_SUPPLY         = 5'd05;
+localparam PE_SRC_TRANSITION_TO_DEFAULT     = 5'd06;
+localparam PE_SRC_CAPABILITY_RESPONSE       = 5'd07;
+localparam PE_SRC_READY                     = 5'd08;
+localparam PE_SRC_SEND_SOURCE_ALERT         = 5'd09;
+localparam PE_SRC_GIVE_PPS_STATUS           = 5'd10;
+localparam PE_BIST_CARRIER_MODE             = 5'd11;
+localparam PE_SRC_HARD_RESET                = 5'd12;
+localparam PE_SRC_HARD_RESET_RECEIVED       = 5'd13;
+localparam PE_SRC_SEND_SOFT_RESET           = 5'd14;
+localparam PE_SRC_SOFT_RESET                = 5'd15;
+localparam NA_STATE                         = 5'h1f;
 
-localparam NUM_HARDRESETCOUNT               = 2
+localparam NUM_HARDRESETCOUNT               = 2'd2;
 
-reg       [3:0] pe_cur_st;
-reg       [3:0] pe_nxt_st;
-reg       [3:0] entry_state;
-reg       [3:0] exit_state;
+reg       [4:0] pe_cur_st;
+reg       [4:0] pe_nxt_st;
+reg       [4:0] pe_cur_st_d;
+reg       [4:0] entry_state;
+reg       [4:0] exit_state;
 
 //========================================================================================
 //========================================================================================

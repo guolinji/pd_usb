@@ -45,10 +45,8 @@ module dpe_top (
 
     //pe&pl reset handshake
     pl2pe_hard_reset_req,
-    pl2pe_cable_reset_req,
-    pe2pl_hard_reset_ack,
-    pe2pl_cable_reset_ack,
-    );
+    pe2pl_hard_reset_ack
+);
 
 input              clk;
 input              rst_n;
@@ -78,6 +76,8 @@ output             pe2pl_cable_reset_ack;
 input              pl2pe_hard_reset_req;
 input              pl2pe_cable_reset_req;
 
+parameter  FREQ_MULTI_300K                  = 4;
+parameter  WIDTH_MULTI_300K                 = 2;
 
 localparam PE_SRC_STARTUP                   = 5'd00;
 localparam PE_SRC_DISCOVERY                 = 5'd01;
@@ -117,7 +117,41 @@ assign without_goodcrc              = pl2pe_tx_ack && pl2pe_tx_result[1:0]!=2'b0
 //              receive message
 //========================================================================================
 //========================================================================================
-assign request_message_received     = pl2pe_rx_en && pl2pe_rx_type[6:5]==2'b0 && pl2pe_rx_type[4:0]==5'bxxx;
+//           pl2pe_rx_en;
+//[ 2:0]     pl2pe_rx_result;
+//[ 6:0]     pl2pe_rx_type;
+//[ 2:0]     pl2pe_rx_sop_type;
+//[65:0]     pl2pe_rx_info;
+assign request_msg_received     = pl2pe_rx_en && pl2pe_rx_type[6:5]==2'b0 && pl2pe_rx_type[4:0]==5'bxxx;
+
+assign accept_msg_received          = pl2pe_rx_en_reg && pl2pe_rx_type_reg[6:5]==2'b0 && pl2pe_rx_type[4:0]==5'bxxx;
+assign get_pps_status_msg_received  =
+assign get_source_cap_msg_received  =
+assign goodcrc_msg_received         =
+assign reject_msg_received          =
+assign soft_reset_msg_received      =
+
+request_msg_received
+bist_msg_received
+
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        pl2pe_rx_en_reg             <= 1'b0;
+        pl2pe_rx_result_reg         <= 3'b0;
+        pl2pe_rx_type_reg           <= 7'b0;
+        pl2pe_rx_sop_type_reg       <= 3'b0;
+        pl2pe_rx_info_reg           <= 66'b0;
+    end else if (pl2pe_rx_en) begin
+        pl2pe_rx_en_reg             <= 1'b1;
+        pl2pe_rx_result_reg         <= pl2pe_rx_result;
+        pl2pe_rx_type_reg           <= pl2pe_rx_type;
+        pl2pe_rx_sop_type_reg       <= pl2pe_rx_sop_type;
+        pl2pe_rx_info_reg           <= pl2pe_rx_info;
+    end else begin
+        pl2pe_rx_en_reg             <= 1'b0;
+    end
+end
+
 
 //========================================================================================
 //========================================================================================
@@ -147,7 +181,7 @@ always @(*) begin
         //Entry: start SourceCapabilityTimer
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
         end else if (SourceCapabilityTimer_out) begin
             pe_nxt_st = PE_SRC_SEND_CAPABILITIES;
@@ -171,9 +205,9 @@ always @(*) begin
         //      Initialize and run the SenderResponseTimer.
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
-        end else if (request_message_received) begin
+        end else if (request_msg_received) begin
             pe_nxt_st = PE_SRC_NEGOTIATE_CAPABILITY;
         end else if (without_goodcrc) begin
             pe_nxt_st = PE_SRC_DISCOVERY;
@@ -187,7 +221,7 @@ always @(*) begin
         //Entry: PE2DPM_evaluate_req
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
         end else if (PE2DPM_evaluate_result[0] && PE2DPM_evaluate_result[2:1]==2'b0) begin
             pe_nxt_st = PE_SRC_TRANSITION_SUPPLY; // request can be met
@@ -200,7 +234,7 @@ always @(*) begin
         //       PE2DPM_trans_supply
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
         end else if (DPM2PE_trans_finish) begin
             pe_nxt_st = PE_SRC_READY;
@@ -215,7 +249,7 @@ always @(*) begin
         //       request a reset of the local hardware
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
         end else if (DPM2PE_trans_finish) begin
             pe_nxt_st = PE_SRC_STARTUP;
@@ -229,9 +263,9 @@ always @(*) begin
         //       send Reject message
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
-        end else if (explicit_contract & reject_message_sent) begin
+        end else if (explicit_contract & reject_msg_sent) begin
             // there is an Explicit Contract and
             // A Reject Message has been sent
             pe_nxt_st = PE_SRC_READY;
@@ -246,19 +280,19 @@ always @(*) begin
         //       initialize and run SourcePPSCommTimer if the current Explicit Contract is for a PPS APDO
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
-        end else if (request_message_received) begin
+        end else if (request_msg_received) begin
             pe_nxt_st = PE_SRC_NEGOTIATE_CAPABILITY;
-        end else if (get_source_cap_message_received) begin
+        end else if (get_source_cap_msg_received) begin
             pe_nxt_st = PE_SRC_SEND_CAPABILITIES;
         end else if (sourcePPScommTimer_out) begin
             pe_nxt_st = PE_SRC_HARD_RESET;
         end else if (DPM2PE_alert) begin
             pe_nxt_st = PE_SRC_SEND_SOURCE_ALERT;
-        end else if (get_pps_status_message_received) begin
+        end else if (get_pps_status_msg_received) begin
             pe_nxt_st = PE_SRC_GIVE_PPS_STATUS;
-        end else if (bist_message_received & bist_carrier_mode & safe_5v) begin
+        end else if (bist_msg_received & bist_carrier_mode & safe_5v) begin
             pe_nxt_st = PE_BIST_CARRIER_MODE;
         end
         //Exit: 
@@ -269,9 +303,9 @@ always @(*) begin
         //       send Alert message
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
-        end else if (alert_message_sent) begin
+        end else if (alert_msg_sent) begin
             pe_nxt_st = PE_SRC_READY;
         end
     end
@@ -280,9 +314,9 @@ always @(*) begin
         //       request the present Source PPS status and send PPS_Status message
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
-        end else if (pps_status_message_sent) begin
+        end else if (pps_status_msg_sent) begin
             pe_nxt_st = PE_SRC_READY;
         end
     end
@@ -300,7 +334,7 @@ always @(*) begin
         //       incr HardResetCounter
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
         end else if (PSHardResetTimer_out) begin
             pe_nxt_st = PE_SRC_TRANSITION_TO_DEFAULT;
@@ -332,9 +366,9 @@ always @(*) begin
         //       initialize and run the SenderResponseTimer
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (soft_reset_message_received) begin
+        end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
-        end else if (accept_message_received) begin
+        end else if (accept_msg_received) begin
             pe_nxt_st = PE_SRC_SEND_CAPABILITIES;
         end else if (SenderResponseTimer_out | ???PL indicates that a transmission error has occurred) begin
             pe_nxt_st = PE_SRC_HARD_RESET;
@@ -346,7 +380,7 @@ always @(*) begin
         //       shall reset the PL and request the PL to send an Accept Message
         if (pl2pe_hard_reset_req) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
-        end else if (accept_message_sent) begin
+        end else if (accept_msg_sent) begin
             pe_nxt_st = PE_SRC_SEND_CAPABILITIES;
         end else if (???PL indicates that a transmission error has occurred) begin
             pe_nxt_st = PE_SRC_HARD_RESET;
@@ -367,23 +401,34 @@ end
 // entry state
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        entry_state <= NA_State;
+        entry_state <= NA_STATE;
     end else if (pe_cur_st != pe_cur_st_d) begin
         entry_state <= pe_cur_st;
     end else begin
-        entry_state <= NA_State;
+        entry_state <= NA_STATE;
 end
 
 // exit state
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        exit_state <= NA_State;
+        exit_state <= NA_STATE;
     end else if (pe_cur_st != pe_nxt_st) begin
         exit_state <= pe_cur_st;
     end else begin
-        exit_state <= NA_State;
+        exit_state <= NA_STATE;
 end
 
+
+//========================================================================================
+//              AMS begin/end
+//========================================================================================
+pe2pl_tx_ams_begin
+assign pe2pl_tx_ams_end = (entry_state==PE_SRC_READY) && (fst_msg_of_ams_sent);
+
+//========================================================================================
+//              Hard reset request
+//========================================================================================
+assign pe2pl_tx_hardreset = (entry_state==PE_SRC_HARD_RESET);
 
 //========================================================================================
 //              Counters
@@ -391,7 +436,7 @@ end
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         HardResetCounter <= 2'h0;
-    end else if ((pe_cur_st==PE_SRC_SEND_CAPABILITIES) & goodcrc_message_received) begin
+    end else if ((pe_cur_st==PE_SRC_SEND_CAPABILITIES) && goodcrc_msg_received) begin
         HardResetCounter <= 2'h0;
     end else if (entry_state==PE_SRC_HARD_RESET) begin
         HardResetCounter <= HardResetCounter + 1'h1;
@@ -401,18 +446,74 @@ end
 //========================================================================================
 //              Timers
 //========================================================================================
+//                          min         max
+//SenderResponseTimer       24ms        30ms
+//SourceCapabilityTimer     100ms       200ms
+//NoResponseTimer           4.5s        5.5s
+//BISTContModeTimer         30ms        60ms
+//PSHardResetTimer          25ms        35ms
+//SourcePPSCommTimer                    15s
 
+assign SenderResponseTimer_start = (entry_state==PE_SRC_SEND_CAPABILITIES || entry_state==PE_SRC_SEND_SOFT_RESET);
+assign SenderResponseTimer_stop  = (exit_state ==PE_SRC_SEND_CAPABILITIES || exit_state ==PE_SRC_SEND_SOFT_RESET);
+dpe_timer #(.VALUE(8*FREQ_MULTI_300K),.WIDTH(4+WIDTH_MULTI_300K)) U_SenderResponseTimer (
+     .clk       (clk)
+    ,.rst_n     (rst_n)
+    ,.start     (SenderResponseTimer_start)
+    ,.stop      (SenderResponseTimer_stop)
+    ,.timeout   (SenderResponseTimer_out)
+);
 
+assign SourceCapabilityTimer_start = (entry_state==PE_SRC_DISCOVERY);
+assign SourceCapabilityTimer_stop  = (exit_state ==PE_SRC_DISCOVERY);
+dpe_timer #(.VALUE(45*FREQ_MULTI_300K) ,.WIDTH(6+WIDTH_MULTI_300K)) U_SourceCapabilityTimer (
+     .clk       (clk)
+    ,.rst_n     (rst_n)
+    ,.start     (SourceCapabilityTimer_start)
+    ,.stop      (SourceCapabilityTimer_stop)
+    ,.timeout   (SourceCapabilityTimer_out)
+);
+
+assign NoResponseTimer_start = (exit_state==PE_SRC_TRANSITION_TO_DEFAULT);
+assign NoResponseTimer_stop  = ((pe_cur_st==PE_SRC_SEND_CAPABILITIES) && goodcrc_msg_received);
+dpe_timer #(.VALUE(1515*FREQ_MULTI_300K) ,.WIDTH(11+WIDTH_MULTI_300K)) U_NoResponseTimer (
+     .clk       (clk)
+    ,.rst_n     (rst_n)
+    ,.start     (NoResponseTimer_start)
+    ,.stop      (NoResponseTimer_stop)
+    ,.timeout   (NoResponseTimer_out)
+);
+
+assign BISTContModeTimer_start = (entry_state==PE_BIST_CARRIER_MODE);
+assign BISTContModeTimer_stop  = (exit_state ==PE_BIST_CARRIER_MODE);
+dpe_timer #(.VALUE(13*FREQ_MULTI_300K) ,.WIDTH(4+WIDTH_MULTI_300K)) U_BISTContModeTimer (
+     .clk       (clk)
+    ,.rst_n     (rst_n)
+    ,.start     (BISTContModeTimer_start)
+    ,.stop      (BISTContModeTimer_stop)
+    ,.timeout   (BISTContModeTimer_out)
+);
+
+assign PSHardResetTimer_start = (entry_state==PE_SRC_HARD_RESET || entry_state==PE_SRC_HARD_RESET_RECEIVED);
+assign PSHardResetTimer_stop  = (exit_state ==PE_SRC_HARD_RESET || exit_state ==PE_SRC_HARD_RESET_RECEIVED);
+dpe_timer #(.VALUE(9*FREQ_MULTI_300K) ,.WIDTH(4+WIDTH_MULTI_300K)) U_PSHardResetTimer (
+     .clk       (clk)
+    ,.rst_n     (rst_n)
+    ,.start     (PSHardResetTimer_start)
+    ,.stop      (PSHardResetTimer_stop)
+    ,.timeout   (PSHardResetTimer_out)
+);
+
+assign SourcePPSCommTimer_start = (entry_state==PE_SRC_READY) && explicit_contract && pps_apdo;
+assign SourcePPSCommTimer_stop  = (exit_state ==PE_SRC_READY);
+dpe_timer #(.VALUE(4500*FREQ_MULTI_300K) ,.WIDTH(13+WIDTH_MULTI_300K)) U_SourcePPSCommTimer (
+     .clk       (clk)
+    ,.rst_n     (rst_n)
+    ,.start     (SourcePPSCommTimer_start)
+    ,.stop      (SourcePPSCommTimer_stop)
+    ,.timeout   (SourcePPSCommTimer_out)
+);
 
 endmodule
 
 //a plug is attached
-//
-//SourceCapabilityTimer
-//SenderResponseTimer
-//NoResponseTimer
-//SourcePPSCommTimer
-//BISTContModeTimer
-//PSHardResetTimer
-//
-//HardResetCounter

@@ -1,4 +1,4 @@
-`include timescale.v
+`include "timescale.v"
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
 // Engineer: 
@@ -36,10 +36,10 @@ module dpe_top (
     ana2pe_pps_voltage,
     ana2pe_pps_current,
     ana2pe_pps_ptf,
-    ana2pe_pps_omf
+    ana2pe_pps_omf,
     ana2pe_alert,
 
-    pe2pl_reset_req;
+    pe2pl_reset_req,
 
     //pe&pl tx signal
     pe2pl_tx_en,
@@ -70,21 +70,21 @@ input              clk;
 input              rst_n;
 
 //global signal
-input               i_support_5amps,
-input   [ 3:0]      i_pdo_selidx,
+input               i_support_5amps;
+input   [ 3:0]      i_pdo_selidx;
 
 //analog&pe signal
-input   [ 0:0]      ana2pe_attached,
-output  [ 0:0]      pe2ana_trans_en,
-output  [ 0:0]      pe2ana_trans_pdotype,
-output  [ 9:0]      pe2ana_trans_voltage,
-output  [ 9:0]      pe2ana_trans_current,
-input   [ 0:0]      ana2pe_trans_finish,
-input   [15:0]      ana2pe_pps_voltage,
-input   [ 7:0]      ana2pe_pps_current,
-input   [ 1:0]      ana2pe_pps_ptf,
-input   [ 0:0]      ana2pe_pps_omf
-input   [ 0:0]      ana2pe_alert,
+input   [ 0:0]      ana2pe_attached;
+output  [ 0:0]      pe2ana_trans_en;
+output  [ 0:0]      pe2ana_trans_pdotype;
+output  [ 9:0]      pe2ana_trans_voltage;
+output  [ 9:0]      pe2ana_trans_current;
+input   [ 0:0]      ana2pe_trans_finish;
+input   [15:0]      ana2pe_pps_voltage;
+input   [ 7:0]      ana2pe_pps_current;
+input   [ 1:0]      ana2pe_pps_ptf;
+input   [ 0:0]      ana2pe_pps_omf;
+input   [ 0:0]      ana2pe_alert;
 
 output             pe2pl_reset_req;
 
@@ -113,8 +113,8 @@ input              pl2pe_hard_reset_req;
 output             pe2pl_hard_reset_ack;
 
 
-parameter  FREQ_MULTI_300K                  = 4;
-parameter  WIDTH_MULTI_300K                 = 2;
+parameter  FREQ_MULTI_300K                  = 8;
+parameter  WIDTH_MULTI_300K                 = 3;
 
 localparam PE_SRC_STARTUP                   = 5'd00;
 localparam PE_SRC_DISCOVERY                 = 5'd01;
@@ -141,6 +141,7 @@ localparam NUM_HARDRESETCOUNT               = 2'd2;
 wire            tx_accept_msg;
 wire            tx_ps_rdy_msg;
 wire            tx_reject_msg;
+wire            tx_soft_reset_msg;
 wire            tx_srccap_msg;
 wire            tx_alert_msg;
 wire            tx_pps_status_msg;
@@ -172,6 +173,7 @@ wire            request_msg_received;
 wire            bist_msg_received;
 wire            hard_reset_sig_received;
 wire            bist_carrier_mode;
+wire            bist_test_data;
 wire            request_can_met;
 wire            request_cannot_met;
 
@@ -202,16 +204,23 @@ reg       [1:0] HardResetCounter;
 
 wire            SenderResponseTimer_start;
 wire            SenderResponseTimer_stop;
+wire            SenderResponseTimer_out;
 wire            SourceCapabilityTimer_start;
 wire            SourceCapabilityTimer_stop;
+wire            SourceCapabilityTimer_out;
 wire            NoResponseTimer_start;
 wire            NoResponseTimer_stop;
+wire            NoResponseTimer_out;
 wire            BISTContModeTimer_start;
 wire            BISTContModeTimer_stop;
+wire            BISTContModeTimer_out;
 wire            PSHardResetTimer_start;
 wire            PSHardResetTimer_stop;
+wire            PSHardResetTimer_out;
 wire            SourcePPSCommTimer_start;
 wire            SourcePPSCommTimer_stop;
+wire            SourcePPSCommTimer_out;
+wire            fst_msg_of_ams_sent;
 
 //========================================================================================
 //========================================================================================
@@ -235,6 +244,7 @@ wire            SourcePPSCommTimer_stop;
 assign tx_accept_msg            = (entry_state==PE_SRC_TRANSITION_SUPPLY) || ((pe_cur_st==PE_SRC_SOFT_RESET) && pl2pe_reset_done);
 assign tx_ps_rdy_msg            = (exit_state ==PE_SRC_TRANSITION_SUPPLY);
 assign tx_reject_msg            = (entry_state==PE_SRC_CAPABILITY_RESPONSE);
+assign tx_soft_reset_msg        = (pe_cur_st==PE_SRC_SOFT_RESET) && pl2pe_reset_done;
 
 assign tx_srccap_msg            = (entry_state==PE_SRC_SEND_CAPABILITIES);
 assign tx_alert_msg             = (entry_state==PE_SRC_SEND_SOURCE_ALERT);
@@ -321,7 +331,7 @@ end
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        pe2pl_reset_d <= 3'b0;
+        pe2pl_reset_d <= 3'b1;
     end else begin
         pe2pl_reset_d <= {pe2pl_reset_d[1:0], pe2pl_reset_req};
     end
@@ -365,6 +375,7 @@ assign bist_msg_received            = pl2pe_rx_en_reg && pl2pe_rx_type_reg[6:5]=
 
 assign hard_reset_sig_received      = pl2pe_rx_en_reg && pl2pe_rx_sop_type_reg==3'd3;
 assign bist_carrier_mode            = ~pl2pe_rx_info_reg[22];
+assign bist_test_data               = pl2pe_rx_info_reg[22];
 
 assign request_can_met              = ~pl2pe_rx_info_reg[20];
 assign request_cannot_met           = pl2pe_rx_info_reg[20];
@@ -545,7 +556,7 @@ always @(*) begin
             pe_nxt_st = PE_SRC_NEGOTIATE_CAPABILITY;
         end else if (get_source_cap_msg_received) begin
             pe_nxt_st = PE_SRC_SEND_CAPABILITIES;
-        end else if (sourcePPScommTimer_out) begin
+        end else if (SourcePPSCommTimer_out) begin
             pe_nxt_st = PE_SRC_HARD_RESET;
         end else if (ana2pe_alert) begin
             pe_nxt_st = PE_SRC_SEND_SOURCE_ALERT;
@@ -672,6 +683,7 @@ always @(posedge clk or negedge rst_n) begin
         entry_state <= pe_cur_st;
     end else begin
         entry_state <= NA_STATE;
+    end
 end
 
 // exit state
@@ -682,6 +694,7 @@ always @(posedge clk or negedge rst_n) begin
         exit_state <= pe_cur_st;
     end else begin
         exit_state <= NA_STATE;
+    end
 end
 
 
@@ -701,6 +714,7 @@ end
 //========================================================================================
 //              AMS begin/end
 //========================================================================================
+assign fst_msg_of_ams_sent = 1'b1;
 assign pe2pl_tx_ams_begin = (exit_state ==PE_SRC_READY) || (exit_state == PE_SRC_STARTUP);
 assign pe2pl_tx_ams_end   = (entry_state==PE_SRC_READY) && (fst_msg_of_ams_sent);
 
@@ -730,7 +744,7 @@ end
 
 assign SenderResponseTimer_start = (entry_state==PE_SRC_SEND_CAPABILITIES || entry_state==PE_SRC_SEND_SOFT_RESET);
 assign SenderResponseTimer_stop  = (exit_state ==PE_SRC_SEND_CAPABILITIES || exit_state ==PE_SRC_SEND_SOFT_RESET);
-dpe_timer #(.VALUE(8*FREQ_MULTI_300K),.WIDTH(4+WIDTH_MULTI_300K)) U_SenderResponseTimer (
+dpe_timer #(.VALUE(8000*FREQ_MULTI_300K),.WIDTH(13+WIDTH_MULTI_300K)) U_SenderResponseTimer (
      .clk       (clk)
     ,.rst_n     (rst_n)
     ,.start     (SenderResponseTimer_start)
@@ -740,7 +754,7 @@ dpe_timer #(.VALUE(8*FREQ_MULTI_300K),.WIDTH(4+WIDTH_MULTI_300K)) U_SenderRespon
 
 assign SourceCapabilityTimer_start = (entry_state==PE_SRC_DISCOVERY);
 assign SourceCapabilityTimer_stop  = (exit_state ==PE_SRC_DISCOVERY);
-dpe_timer #(.VALUE(45*FREQ_MULTI_300K) ,.WIDTH(6+WIDTH_MULTI_300K)) U_SourceCapabilityTimer (
+dpe_timer #(.VALUE(45000*FREQ_MULTI_300K) ,.WIDTH(16+WIDTH_MULTI_300K)) U_SourceCapabilityTimer (
      .clk       (clk)
     ,.rst_n     (rst_n)
     ,.start     (SourceCapabilityTimer_start)
@@ -750,7 +764,7 @@ dpe_timer #(.VALUE(45*FREQ_MULTI_300K) ,.WIDTH(6+WIDTH_MULTI_300K)) U_SourceCapa
 
 assign NoResponseTimer_start = (exit_state==PE_SRC_TRANSITION_TO_DEFAULT);
 assign NoResponseTimer_stop  = ((pe_cur_st==PE_SRC_SEND_CAPABILITIES) && tx_pass);
-dpe_timer #(.VALUE(1515*FREQ_MULTI_300K) ,.WIDTH(11+WIDTH_MULTI_300K)) U_NoResponseTimer (
+dpe_timer #(.VALUE(1515000*FREQ_MULTI_300K) ,.WIDTH(21+WIDTH_MULTI_300K)) U_NoResponseTimer (
      .clk       (clk)
     ,.rst_n     (rst_n)
     ,.start     (NoResponseTimer_start)
@@ -760,7 +774,7 @@ dpe_timer #(.VALUE(1515*FREQ_MULTI_300K) ,.WIDTH(11+WIDTH_MULTI_300K)) U_NoRespo
 
 assign BISTContModeTimer_start = (entry_state==PE_BIST_CARRIER_MODE);
 assign BISTContModeTimer_stop  = (exit_state ==PE_BIST_CARRIER_MODE);
-dpe_timer #(.VALUE(13*FREQ_MULTI_300K) ,.WIDTH(4+WIDTH_MULTI_300K)) U_BISTContModeTimer (
+dpe_timer #(.VALUE(13000*FREQ_MULTI_300K) ,.WIDTH(14+WIDTH_MULTI_300K)) U_BISTContModeTimer (
      .clk       (clk)
     ,.rst_n     (rst_n)
     ,.start     (BISTContModeTimer_start)
@@ -770,7 +784,7 @@ dpe_timer #(.VALUE(13*FREQ_MULTI_300K) ,.WIDTH(4+WIDTH_MULTI_300K)) U_BISTContMo
 
 assign PSHardResetTimer_start = (entry_state==PE_SRC_HARD_RESET || entry_state==PE_SRC_HARD_RESET_RECEIVED);
 assign PSHardResetTimer_stop  = (exit_state ==PE_SRC_HARD_RESET || exit_state ==PE_SRC_HARD_RESET_RECEIVED);
-dpe_timer #(.VALUE(9*FREQ_MULTI_300K) ,.WIDTH(4+WIDTH_MULTI_300K)) U_PSHardResetTimer (
+dpe_timer #(.VALUE(9000*FREQ_MULTI_300K) ,.WIDTH(14+WIDTH_MULTI_300K)) U_PSHardResetTimer (
      .clk       (clk)
     ,.rst_n     (rst_n)
     ,.start     (PSHardResetTimer_start)
@@ -780,7 +794,7 @@ dpe_timer #(.VALUE(9*FREQ_MULTI_300K) ,.WIDTH(4+WIDTH_MULTI_300K)) U_PSHardReset
 
 assign SourcePPSCommTimer_start = (entry_state==PE_SRC_READY) && explicit_contract && (ana2pe_trans_finish&&pl2pe_rx_info_reg[21]);
 assign SourcePPSCommTimer_stop  = (exit_state ==PE_SRC_READY);
-dpe_timer #(.VALUE(4500*FREQ_MULTI_300K) ,.WIDTH(13+WIDTH_MULTI_300K)) U_SourcePPSCommTimer (
+dpe_timer #(.VALUE(4500000*FREQ_MULTI_300K) ,.WIDTH(23+WIDTH_MULTI_300K)) U_SourcePPSCommTimer (
      .clk       (clk)
     ,.rst_n     (rst_n)
     ,.start     (SourcePPSCommTimer_start)
@@ -791,4 +805,5 @@ dpe_timer #(.VALUE(4500*FREQ_MULTI_300K) ,.WIDTH(13+WIDTH_MULTI_300K)) U_SourceP
 endmodule
 
 //       safe_5v
+
 

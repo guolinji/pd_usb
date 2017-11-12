@@ -1,4 +1,4 @@
-`include timescale.v
+`include "timescale.v"
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
 // Engineer: 
@@ -39,18 +39,19 @@ reg [WIDTH-1 : 0]   timer_cnt;
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
-        timer_cnt <= WIDTH'b0;
+        timer_cnt <= 0;
     end else if (stop) begin
-        timer_cnt <= WIDTH'b0;
+        timer_cnt <= 0;
     end else if (start) begin
-        timer_cnt <= WIDTH'b1;
+        timer_cnt <= 1;
     end else if (timer_cnt==VALUE) begin
         timer_cnt <= timer_cnt;
     end else if (|timer_cnt) begin
-        timer_cnt <= timer_cnt + WIDTH'b1;
+        timer_cnt <= timer_cnt + 1;
     end
 end
 
 assign timeout = timer_cnt==VALUE;
 
 endmodule
+

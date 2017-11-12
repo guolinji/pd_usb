@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps
+ `include "timescale.v"
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
 // Engineer: 
@@ -89,7 +89,7 @@ output    phy2pl_rx_packet_done;
 output    [1:0] phy2pl_rx_packet_result;
 //rx payload
 output    phy2pl_rx_payload_en;
-output    [2:0] phy2pl_rx_payload;
+output    [7:0] phy2pl_rx_payload;
 
 
 input     phy_control_rx_packet_en;

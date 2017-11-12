@@ -22,8 +22,25 @@ module dpe_top (
     clk,
     rst_n,
 
+    //global signal
+    i_support_5amps,
+    i_pdo_selidx,
+
     //analog&pe signal
-    
+    ana2pe_attached,
+    pe2ana_trans_en,
+    pe2ana_trans_pdotype,
+    pe2ana_trans_voltage,
+    pe2ana_trans_current,
+    ana2pe_trans_finish,
+    ana2pe_pps_voltage,
+    ana2pe_pps_current,
+    ana2pe_pps_ptf,
+    ana2pe_pps_omf
+    ana2pe_alert,
+
+    pe2pl_reset_req;
+
     //pe&pl tx signal
     pe2pl_tx_en,
     pe2pl_tx_type,
@@ -36,9 +53,10 @@ module dpe_top (
     pe2pl_tx_ams_begin,
     pe2pl_tx_ams_end,
 
+    pe2pl_tx_bist_carrier_mode,
+
     //pe&pl rx signal
     pl2pe_rx_en,
-    pl2pe_rx_result,
     pl2pe_rx_type,
     pl2pe_rx_sop_type,
     pl2pe_rx_info,
@@ -51,30 +69,49 @@ module dpe_top (
 input              clk;
 input              rst_n;
 
+//global signal
+input               i_support_5amps,
+input   [ 3:0]      i_pdo_selidx,
+
+//analog&pe signal
+input   [ 0:0]      ana2pe_attached,
+output  [ 0:0]      pe2ana_trans_en,
+output  [ 0:0]      pe2ana_trans_pdotype,
+output  [ 9:0]      pe2ana_trans_voltage,
+output  [ 9:0]      pe2ana_trans_current,
+input   [ 0:0]      ana2pe_trans_finish,
+input   [15:0]      ana2pe_pps_voltage,
+input   [ 7:0]      ana2pe_pps_current,
+input   [ 1:0]      ana2pe_pps_ptf,
+input   [ 0:0]      ana2pe_pps_omf
+input   [ 0:0]      ana2pe_alert,
+
+output             pe2pl_reset_req;
+
 //pe&pl tx signal
-output             pe2pl_tx_en;
-output    [ 6:0]   pe2pl_tx_type;
-output    [ 2:0]   pe2pl_tx_sop_type;
-output    [ 8:0]   pe2pl_tx_info;
-output    [38:0]   pe2pl_tx_ex_info;
 input              pl2pe_tx_ack;
-input     [ 1:0]   pl2pe_tx_result;
+input   [ 1:0]     pl2pe_tx_result;
+
+output             pe2pl_tx_en;
+output  [ 6:0]     pe2pl_tx_type;
+output  [ 2:0]     pe2pl_tx_sop_type;
+output  [ 4:0]     pe2pl_tx_info;
+output  [35:0]     pe2pl_tx_ex_info;
 
 output             pe2pl_tx_ams_begin;
 output             pe2pl_tx_ams_end;
 
+output             pe2pl_tx_bist_carrier_mode;
+
 //pe&pl rx signal
 input              pl2pe_rx_en;
-input   [ 2:0]     pl2pe_rx_result;
 input   [ 6:0]     pl2pe_rx_type;
 input   [ 2:0]     pl2pe_rx_sop_type;
-input   [65:0]     pl2pe_rx_info;
+input   [22:0]     pl2pe_rx_info;
 
-//pe&pl reset handshake
-output             pe2pl_hard_reset_ack;
-output             pe2pl_cable_reset_ack;
 input              pl2pe_hard_reset_req;
-input              pl2pe_cable_reset_req;
+output             pe2pl_hard_reset_ack;
+
 
 parameter  FREQ_MULTI_300K                  = 4;
 parameter  WIDTH_MULTI_300K                 = 2;
@@ -91,19 +128,90 @@ localparam PE_SRC_READY                     = 5'd08;
 localparam PE_SRC_SEND_SOURCE_ALERT         = 5'd09;
 localparam PE_SRC_GIVE_PPS_STATUS           = 5'd10;
 localparam PE_BIST_CARRIER_MODE             = 5'd11;
-localparam PE_SRC_HARD_RESET                = 5'd12;
-localparam PE_SRC_HARD_RESET_RECEIVED       = 5'd13;
-localparam PE_SRC_SEND_SOFT_RESET           = 5'd14;
-localparam PE_SRC_SOFT_RESET                = 5'd15;
+localparam PE_BIST_TEST_DATA                = 5'd12;
+localparam PE_SRC_HARD_RESET                = 5'd13;
+localparam PE_SRC_HARD_RESET_RECEIVED       = 5'd14;
+localparam PE_SRC_SEND_SOFT_RESET           = 5'd15;
+localparam PE_SRC_SOFT_RESET                = 5'd16;
 localparam NA_STATE                         = 5'h1f;
 
 localparam NUM_HARDRESETCOUNT               = 2'd2;
+
+
+wire            tx_accept_msg;
+wire            tx_ps_rdy_msg;
+wire            tx_reject_msg;
+wire            tx_srccap_msg;
+wire            tx_alert_msg;
+wire            tx_pps_status_msg;
+wire            tx_hard_reset;
+
+reg     [ 0:0]  pe2pl_tx_en;
+reg     [ 6:0]  pe2pl_tx_type;
+reg     [ 2:0]  pe2pl_tx_sop_type;
+reg     [ 4:0]  pe2pl_tx_info;
+reg     [35:0]  pe2pl_tx_ex_info;
+
+reg     [ 0:0]  pl2pe_tx_ack_reg;
+reg     [ 1:0]  pl2pe_tx_result_reg;
+
+wire            tx_fail;
+wire            tx_pass;
+
+reg     [ 0:0]  pe2pl_reset_req;
+reg     [ 2:0]  pe2pl_reset_d;
+wire            pl2pe_reset_done;
+wire            pe2pl_tx_bist_carrier_mode;
+
+wire            accept_msg_received;
+wire            reject_msg_received;
+wire            get_source_cap_msg_received;
+wire            soft_reset_msg_received;
+wire            get_pps_status_msg_received;
+wire            request_msg_received;
+wire            bist_msg_received;
+wire            hard_reset_sig_received;
+wire            bist_carrier_mode;
+wire            request_can_met;
+wire            request_cannot_met;
+
+reg     [ 0:0]  pl2pe_rx_en_reg;
+reg     [ 6:0]  pl2pe_rx_type_reg;
+reg     [ 2:0]  pl2pe_rx_sop_type_reg;
+reg     [22:0]  pl2pe_rx_info_reg;
+
+
+reg     [ 0:0]  pe2ana_trans_en;
+reg     [ 0:0]  pe2ana_trans_pdotype;
+reg     [ 9:0]  pe2ana_trans_voltage;
+reg     [ 9:0]  pe2ana_trans_current;
+
 
 reg       [4:0] pe_cur_st;
 reg       [4:0] pe_nxt_st;
 reg       [4:0] pe_cur_st_d;
 reg       [4:0] entry_state;
 reg       [4:0] exit_state;
+
+reg       [0:0] explicit_contract;
+
+wire            pe2pl_tx_ams_begin;
+wire            pe2pl_tx_ams_end;
+
+reg       [1:0] HardResetCounter;
+
+wire            SenderResponseTimer_start;
+wire            SenderResponseTimer_stop;
+wire            SourceCapabilityTimer_start;
+wire            SourceCapabilityTimer_stop;
+wire            NoResponseTimer_start;
+wire            NoResponseTimer_stop;
+wire            BISTContModeTimer_start;
+wire            BISTContModeTimer_stop;
+wire            PSHardResetTimer_start;
+wire            PSHardResetTimer_stop;
+wire            SourcePPSCommTimer_start;
+wire            SourcePPSCommTimer_stop;
 
 //========================================================================================
 //========================================================================================
@@ -142,7 +250,7 @@ always @(posedge clk or negedge rst_n) begin
         pe2pl_tx_type       <= 7'b0;
         pe2pl_tx_sop_type   <= 3'b0;
         pe2pl_tx_info       <= 5'b0;
-        pe2pl_tx_ex_info    <= 28'b0;
+        pe2pl_tx_ex_info    <= 36'b0;
     //********************//
     // Control Message
     //********************//
@@ -164,7 +272,7 @@ always @(posedge clk or negedge rst_n) begin
     end else if (tx_srccap_msg) begin   // Tx Source_Capabilities Message
         pe2pl_tx_en         <= 1'b1;
         pe2pl_tx_type       <= {2'b01, 5'b0_0001};
-        pe2pl_tx_info       <= {is_support_5A,pdo_select_idx};
+        pe2pl_tx_info       <= {i_support_5amps,i_pdo_selidx};
     end else if (tx_alert_msg) begin   // Tx Alert Message
         pe2pl_tx_en         <= 1'b1;
         pe2pl_tx_type       <= {2'b01, 5'b0_0110};
@@ -174,7 +282,7 @@ always @(posedge clk or negedge rst_n) begin
     end else if (tx_pps_status_msg) begin   // Tx PPS_Status Message
         pe2pl_tx_en         <= 1'b1;
         pe2pl_tx_type       <= {2'b10, 5'b0_1100};
-        pe2pl_tx_ex_info    <= 28'b0;
+        pe2pl_tx_ex_info    <= {ana2pe_pps_voltage, ana2pe_pps_current, ana2pe_pps_ptf, ana2pe_pps_omf, 9'd4}; // {output Voltage, output Current, PTF, OMF, Extended Msg Data size}
     //********************//
     // Hard Reset
     //********************//
@@ -190,7 +298,7 @@ always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         pl2pe_tx_ack_reg            <= 1'b0;
         pl2pe_tx_result_reg         <= 2'b0;
-    end else if (pl2pe_tx_ack_reg) begin
+    end else if (pl2pe_tx_ack) begin
         pl2pe_tx_ack_reg            <= 1'b1;
         pl2pe_tx_result_reg         <= pl2pe_tx_result;
     end else begin
@@ -201,18 +309,28 @@ end
 assign tx_fail                  = pl2pe_tx_ack_reg && (pl2pe_tx_result_reg[1:0]!=2'b00);
 assign tx_pass                  = pl2pe_tx_ack_reg && (pl2pe_tx_result_reg[1:0]==2'b00);
 
-assign pe2pl_reset              = (entry_state==PE_SRC_READY) || (entry_state==PE_SRC_SOFT_RESET);
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        pe2pl_reset_req <= 1'b0;
+    end else if ((entry_state==PE_SRC_READY) || (entry_state==PE_SRC_SOFT_RESET)) begin
+        pe2pl_reset_req <= 1'b1;
+    end else if (pl2pe_reset_done) begin
+        pe2pl_reset_req <= 1'b0;
+    end
+end
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         pe2pl_reset_d <= 3'b0;
     end else begin
-        pe2pl_reset_d <= {pe2pl_reset_d[1:0], pe2pl_reset};
+        pe2pl_reset_d <= {pe2pl_reset_d[1:0], pe2pl_reset_req};
     end
 end
 
 // PL reset will finish in 2 cycle;
 assign pl2pe_reset_done = pe2pl_reset_d[2];
+
+assign pe2pl_tx_bist_carrier_mode = (pe_cur_st == PE_BIST_CARRIER_MODE);
 
 //========================================================================================
 //========================================================================================
@@ -235,7 +353,7 @@ assign pl2pe_reset_done = pe2pl_reset_d[2];
 //[ 2:0]     pl2pe_rx_result;
 //[ 6:0]     pl2pe_rx_type;
 //[ 2:0]     pl2pe_rx_sop_type;
-//[65:0]     pl2pe_rx_info;
+//[22:0]     pl2pe_rx_info;
 assign accept_msg_received          = pl2pe_rx_en_reg && pl2pe_rx_type_reg[6:5]==2'b0 && pl2pe_rx_type_reg[4:0]==5'b0_0011;
 assign reject_msg_received          = pl2pe_rx_en_reg && pl2pe_rx_type_reg[6:5]==2'b0 && pl2pe_rx_type_reg[4:0]==5'b0_0100;
 assign get_source_cap_msg_received  = pl2pe_rx_en_reg && pl2pe_rx_type_reg[6:5]==2'b0 && pl2pe_rx_type_reg[4:0]==5'b0_0111;
@@ -246,14 +364,17 @@ assign request_msg_received         = pl2pe_rx_en_reg && pl2pe_rx_type_reg[6:5]=
 assign bist_msg_received            = pl2pe_rx_en_reg && pl2pe_rx_type_reg[6:5]==2'b1 && pl2pe_rx_type_reg[4:0]==5'b0_0011;
 
 assign hard_reset_sig_received      = pl2pe_rx_en_reg && pl2pe_rx_sop_type_reg==3'd3;
-assign bist_carrier_mode            = ~pl2pe_rx_info_reg[49];
+assign bist_carrier_mode            = ~pl2pe_rx_info_reg[22];
+
+assign request_can_met              = ~pl2pe_rx_info_reg[20];
+assign request_cannot_met           = pl2pe_rx_info_reg[20];
 
 always @(posedge clk or negedge rst_n) begin
     if(!rst_n) begin
         pl2pe_rx_en_reg             <= 1'b0;
         pl2pe_rx_type_reg           <= 7'b0;
         pl2pe_rx_sop_type_reg       <= 3'b0;
-        pl2pe_rx_info_reg           <= 66'b0;
+        pl2pe_rx_info_reg           <= 23'b0;
     end else if (pl2pe_rx_en) begin
         pl2pe_rx_en_reg             <= 1'b1;
         pl2pe_rx_type_reg           <= pl2pe_rx_type;
@@ -264,6 +385,32 @@ always @(posedge clk or negedge rst_n) begin
     end
 end
 
+
+//========================================================================================
+//========================================================================================
+//              analog interface
+//========================================================================================
+//========================================================================================
+always @(posedge clk or negedge rst_n) begin
+    if(!rst_n) begin
+        pe2ana_trans_en         <= 1'b0;
+        pe2ana_trans_pdotype    <= 1'b0;
+        pe2ana_trans_voltage    <= 10'd100; // 100*50mV = 5V
+        pe2ana_trans_current    <= 10'd300; // 300*10mA = 3A
+    end else if (entry_state==PE_SRC_TRANSITION_TO_DEFAULT) begin
+        pe2ana_trans_en         <= 1'b1;
+        pe2ana_trans_pdotype    <= 1'b0;
+        pe2ana_trans_voltage    <= 10'd100; // 100*50mV = 5V
+        pe2ana_trans_current    <= 10'd300; // 300*10mA = 3A
+    end else if (entry_state==PE_SRC_TRANSITION_SUPPLY) begin
+        pe2ana_trans_en         <= 1'b1;
+        pe2ana_trans_pdotype    <= pl2pe_rx_info_reg[21];
+        pe2ana_trans_voltage    <= pl2pe_rx_info_reg[19:10];
+        pe2ana_trans_current    <= pl2pe_rx_info_reg[9:0];
+    end else if (ana2pe_trans_finish) begin
+        pe2ana_trans_en         <= 1'b0;
+    end
+end
 
 //========================================================================================
 //========================================================================================
@@ -330,20 +477,20 @@ always @(*) begin
         end
     end
     PE_SRC_NEGOTIATE_CAPABILITY: begin
-        //Entry: pe2ana_evaluate_req
+        //Entry: evaluate_req
         if (hard_reset_sig_received) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
         end else if (soft_reset_msg_received) begin
             pe_nxt_st = PE_SRC_SOFT_RESET;
-        end else if (pl2pe_request_met) begin
+        end else if (request_can_met) begin
             pe_nxt_st = PE_SRC_TRANSITION_SUPPLY; // request can be met
-        end else if (pl2pe_request_cannot_met) begin
+        end else if (request_cannot_met) begin
             pe_nxt_st = PE_SRC_CAPABILITY_RESPONSE; // request cannot be met
         end
     end
     PE_SRC_TRANSITION_SUPPLY: begin
         //Entry: send Accept message
-        //       pe2ana_trans_supply
+        //       pe2ana_trans_en
         if (hard_reset_sig_received) begin
             pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
         end else if (soft_reset_msg_received) begin
@@ -404,8 +551,10 @@ always @(*) begin
             pe_nxt_st = PE_SRC_SEND_SOURCE_ALERT;
         end else if (get_pps_status_msg_received) begin
             pe_nxt_st = PE_SRC_GIVE_PPS_STATUS;
-        end else if (bist_msg_received & bist_carrier_mode & safe_5v) begin
+        end else if (bist_msg_received & bist_carrier_mode) begin
             pe_nxt_st = PE_BIST_CARRIER_MODE;
+        end else if (bist_msg_received & bist_test_data) begin
+            pe_nxt_st = PE_BIST_TEST_DATA;
         end
         //Exit: 
         //      notify PL that the first Message in an AMS will follow if the source is initiating an AMS
@@ -438,6 +587,11 @@ always @(*) begin
         //       initialize and run BISTContModeTimer
         if (BISTContModeTimer_out) begin
             pe_nxt_st = PE_SRC_TRANSITION_TO_DEFAULT;
+        end
+    end
+    PE_BIST_TEST_DATA: begin
+        if (hard_reset_sig_received) begin
+            pe_nxt_st = PE_SRC_HARD_RESET_RECEIVED;
         end
     end
     PE_SRC_HARD_RESET: begin
@@ -551,11 +705,6 @@ assign pe2pl_tx_ams_begin = (exit_state ==PE_SRC_READY) || (exit_state == PE_SRC
 assign pe2pl_tx_ams_end   = (entry_state==PE_SRC_READY) && (fst_msg_of_ams_sent);
 
 //========================================================================================
-//              Hard reset request
-//========================================================================================
-assign pe2pl_tx_hardreset = (entry_state==PE_SRC_HARD_RESET);
-
-//========================================================================================
 //              Counters
 //========================================================================================
 always @(posedge clk or negedge rst_n) begin
@@ -629,7 +778,7 @@ dpe_timer #(.VALUE(9*FREQ_MULTI_300K) ,.WIDTH(4+WIDTH_MULTI_300K)) U_PSHardReset
     ,.timeout   (PSHardResetTimer_out)
 );
 
-assign SourcePPSCommTimer_start = (entry_state==PE_SRC_READY) && explicit_contract && pps_apdo;
+assign SourcePPSCommTimer_start = (entry_state==PE_SRC_READY) && explicit_contract && (ana2pe_trans_finish&&pl2pe_rx_info_reg[21]);
 assign SourcePPSCommTimer_stop  = (exit_state ==PE_SRC_READY);
 dpe_timer #(.VALUE(4500*FREQ_MULTI_300K) ,.WIDTH(13+WIDTH_MULTI_300K)) U_SourcePPSCommTimer (
      .clk       (clk)
@@ -641,11 +790,5 @@ dpe_timer #(.VALUE(4500*FREQ_MULTI_300K) ,.WIDTH(13+WIDTH_MULTI_300K)) U_SourceP
 
 endmodule
 
-        //       pe2ana_trans_supply
-        //       ana2pe_trans_finish
-        //       ana2pe_alert
-        //       safe_5v
-        //pl2pe_request_met
-        //pl2pe_request_cannot_met
-        //is_support_5A
-        //pdo_select_idx
+//       safe_5v
+

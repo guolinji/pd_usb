@@ -1,0 +1,343 @@
+m255
+K3
+13
+cModel Technology
+Z0 dC:\Users\Administrator\Desktop\PD\new\Testbench\sim
+vphy_bmc_decoder
+!i10b 1
+VfCc9dAYbm75cCNT0Y3Y921
+r1
+!s85 0
+31
+I[f>EG`W:JnAI;BZJ2TCkI2
+Z1 dC:\Users\Administrator\Desktop\PD\new\Testbench\sim
+w1509952120
+8../../RTL/phy_bmc_decoder.v
+F../../RTL/phy_bmc_decoder.v
+L0 21
+Z2 OE;L;10.1a;51
+Z3 !s108 1509952124.991000
+Z4 !s107 ../../RTL/prl_tx_message_path.v|../../RTL/prl_tx_message_if.v|../../RTL/prl_top.v|../../RTL/prl_rx_message_path.v|../../RTL/prl_rx_message_if.v|../../RTL/prl_ctr_state_machine.v|../../RTL/phy_tx_packet_editor.v|../../RTL/phy_top.v|../../RTL/phy_sop_detect.v|../../RTL/phy_definition_of_idle.v|../../RTL/phy_crc32_tx_rx.v|../../RTL/phy_crc32.v|../../RTL/phy_control_tx_rx.v|../../RTL/phy_bmc_encoder.v|../../RTL/phy_bmc_decoder.v|
+Z5 !s90 -reportprogress|300|-cover|bces|-incr|../../RTL/phy_bmc_decoder.v|../../RTL/phy_bmc_encoder.v|../../RTL/phy_control_tx_rx.v|../../RTL/phy_crc32.v|../../RTL/phy_crc32_tx_rx.v|../../RTL/phy_definition_of_idle.v|../../RTL/phy_sop_detect.v|../../RTL/phy_top.v|../../RTL/phy_tx_packet_editor.v|../../RTL/prl_ctr_state_machine.v|../../RTL/prl_rx_message_if.v|../../RTL/prl_rx_message_path.v|../../RTL/prl_top.v|../../RTL/prl_tx_message_if.v|../../RTL/prl_tx_message_path.v|
+Z6 !s102 -cover bces
+Z7 o-cover bces -L mtiAvm -L mtiOvm -L mtiUvm -L mtiUPF
+!s100 Y]Ojz8jBg3z59ZdDboI<^3
+vphy_bmc_encoder
+VR[F]PSQAVWo?[H=NX9^BE3
+r1
+31
+IhL8z0C`DJ=m:efNU_DTjc3
+R1
+w1509952112
+8../../RTL/phy_bmc_encoder.v
+F../../RTL/phy_bmc_encoder.v
+L0 21
+R2
+R3
+R4
+R5
+R6
+R7
+!i10b 1
+!s85 0
+!s100 ^k[3VHY3QHf7?D?f9h9:>1
+vphy_control_tx_rx
+VJmC94dSoa6DCb<bj<Gk0L2
+r1
+31
+I@39ZH?a]m2`M:jiGl6bbR0
+R1
+w1505295606
+8../../RTL/phy_control_tx_rx.v
+F../../RTL/phy_control_tx_rx.v
+L0 21
+R2
+Z8 !s108 1505526625.926000
+R4
+R5
+R6
+R7
+!s10a 1505295606
+!s100 KjC9H`n:KPX6fM1@8efH73
+!i10b 1
+!s85 0
+vphy_crc32
+Z9 !s10a 1504518148
+V?U]iSELk^fBfNmcLPV8:i3
+r1
+31
+IYi]OCo;?ck;aM`d@Nme;H0
+R1
+Z10 w1504518148
+8../../RTL/phy_crc32.v
+F../../RTL/phy_crc32.v
+L0 21
+R2
+Z11 !s108 1505130633.322000
+Z12 !s107 ../../RTL/tb_prl_phy_top.v|../../RTL/prl_tx_message_path.v|../../RTL/prl_tx_message_if.v|../../RTL/prl_top.v|../../RTL/prl_rx_message_path.v|../../RTL/prl_rx_message_if.v|../../RTL/prl_ctr_state_machine.v|../../RTL/phy_tx_packet_editor.v|../../RTL/phy_top.v|../../RTL/phy_sop_detect.v|../../RTL/phy_definition_of_idle.v|../../RTL/phy_crc32_tx_rx.v|../../RTL/phy_crc32.v|../../RTL/phy_control_tx_rx.v|../../RTL/phy_bmc_encoder.v|../../RTL/phy_bmc_decoder.v|
+Z13 !s90 -reportprogress|300|-cover|bces|-incr|../../RTL/phy_bmc_decoder.v|../../RTL/phy_bmc_encoder.v|../../RTL/phy_control_tx_rx.v|../../RTL/phy_crc32.v|../../RTL/phy_crc32_tx_rx.v|../../RTL/phy_definition_of_idle.v|../../RTL/phy_sop_detect.v|../../RTL/phy_top.v|../../RTL/phy_tx_packet_editor.v|../../RTL/prl_ctr_state_machine.v|../../RTL/prl_rx_message_if.v|../../RTL/prl_rx_message_path.v|../../RTL/prl_top.v|../../RTL/prl_tx_message_if.v|../../RTL/prl_tx_message_path.v|../../RTL/tb_prl_phy_top.v|
+R6
+R7
+!s100 Ca3_I3DMSjUnRl>WB:fFE0
+!i10b 1
+!s85 0
+vphy_crc32_tx_rx
+R9
+VQGCbQfjlZ^GzOj:ABJU?X1
+r1
+31
+I>h<OTVdG^cSnb;BIJZ<n12
+R1
+R10
+8../../RTL/phy_crc32_tx_rx.v
+F../../RTL/phy_crc32_tx_rx.v
+L0 21
+R2
+R11
+R12
+R13
+R6
+R7
+!s100 0J=LJ2]OaHYEeDJLD_`^l0
+!i10b 1
+!s85 0
+vphy_definition_of_idle
+R9
+VMIJZo3I@>`^5>00WP@JJc3
+r1
+31
+I>J>8hJZkBU6kAb8QRgAR23
+R1
+R10
+8../../RTL/phy_definition_of_idle.v
+F../../RTL/phy_definition_of_idle.v
+L0 21
+R2
+R11
+R12
+R13
+R6
+R7
+!s100 LTj1iljf9AmFj[XaJ5o;>2
+!i10b 1
+!s85 0
+vphy_sop_detect
+VY9QPDQVP:B[NaBoTSbd2]1
+r1
+31
+I;bDVNW4Q];=DQJP`GWlnb0
+R1
+w1504518149
+8../../RTL/phy_sop_detect.v
+F../../RTL/phy_sop_detect.v
+L0 21
+R2
+R11
+R12
+R13
+R6
+R7
+!s10a 1504518149
+!s100 hNBFIWhohheFf4TTN9dmS1
+!i10b 1
+!s85 0
+vphy_top
+V3325fk4lECnj<877mm7S20
+r1
+31
+IM_<ME`^9G:dTh`047ObQ13
+R1
+w1509949263
+8../../RTL/phy_top.v
+F../../RTL/phy_top.v
+L0 25
+R2
+R5
+R6
+R7
+R4
+!s10a 1509949263
+!s100 OoC7_Q`l54[Xdj[ETH<A_3
+!s108 1509949274.825000
+!i10b 1
+!s85 0
+vphy_tx_packet_editor
+VNho3PJ7?@1C^R_WHMMn3S1
+r1
+31
+I[EOz2I5>fM2QUL[SGaemd3
+R1
+w1505525962
+8../../RTL/phy_tx_packet_editor.v
+F../../RTL/phy_tx_packet_editor.v
+L0 21
+R2
+R8
+R4
+R5
+R6
+R7
+!s10a 1505525962
+!s100 OEFobV=j9=?D9llQ^Ykg^0
+!i10b 1
+!s85 0
+vprl_ctl_state_machine
+VOCnRH3iW;VN6P]`EVXf@]0
+r1
+31
+I_`9Vf[;N<d;_VH<9=kJ_L0
+R1
+w1509951265
+8../../RTL/prl_ctr_state_machine.v
+F../../RTL/prl_ctr_state_machine.v
+L0 21
+R2
+R5
+R6
+R7
+R4
+!s10a 1509951265
+!s100 Rg<I2Q8Ub4U:4:>z_OZYT3
+!s108 1509951291.373000
+!i10b 1
+!s85 0
+vprl_rx_message_if
+VBZoH:VDleLEiD^@aQN4901
+r1
+31
+I<K63YlnlLX;k_aC6_[imb2
+R1
+w1509881079
+8../../RTL/prl_rx_message_if.v
+F../../RTL/prl_rx_message_if.v
+L0 21
+R2
+Z14 !s108 1509947530.222000
+R4
+R5
+R6
+R7
+!s10a 1509881079
+!s100 8nBlfb1]oddhd23mJgeiI1
+!i10b 1
+!s85 0
+vprl_rx_message_path
+Va;l:ThV7Ri9:F:a`6S=;O3
+r1
+31
+IJ_[B3`6[HWE;[eP^_?iRB0
+R1
+w1509883953
+8../../RTL/prl_rx_message_path.v
+F../../RTL/prl_rx_message_path.v
+L0 21
+R2
+R14
+R4
+R5
+R6
+R7
+!s10a 1509883953
+!s100 >TcTTIFABhYX5<BBA]Dag1
+!i10b 1
+!s85 0
+vprl_top
+V@G3[^dh72oHUeN88Y349:3
+r1
+31
+IG=iR1ElJ`I[>=b_RNJFLZ1
+R1
+w1509947747
+8../../RTL/prl_top.v
+F../../RTL/prl_top.v
+L0 21
+R2
+R5
+R6
+R7
+R4
+!s10a 1509947747
+!s100 _G[cT5O?PaZ57baf:CjKD3
+!s108 1509947751.951000
+!i10b 1
+!s85 0
+vprl_tx_message_if
+Vj_5G_H7>IXW^H<R5@;VCi0
+r1
+31
+IR4_ESY_FfF;:LQB@GLhVR2
+R1
+w1509881092
+8../../RTL/prl_tx_message_if.v
+F../../RTL/prl_tx_message_if.v
+L0 21
+R2
+R14
+R4
+R5
+R6
+R7
+!s10a 1509881092
+!s100 zB@8CK=ca;VB_[Soo1Ib?3
+!i10b 1
+!s85 0
+vprl_tx_message_path
+VMd6i2EcbSBDFkmAPVbDfX2
+r1
+31
+In`@`dDYF3@Qd7QnLRglQR0
+R1
+w1509884387
+8../../RTL/prl_tx_message_path.v
+F../../RTL/prl_tx_message_path.v
+L0 21
+R2
+R14
+R4
+R5
+R6
+R7
+!s10a 1509884387
+!s100 Bijde4?JmEh9eD7BcG@TH2
+!i10b 1
+!s85 0
+vtb_prl_phy_top
+IH3n`;4IMANc5F5V@^5KF32
+V^TQMSNBNV4]V;ZAAeZnda3
+R1
+w1504518161
+8../../RTL/tb_prl_phy_top.v
+F../../RTL/tb_prl_phy_top.v
+L0 25
+R2
+r1
+31
+R11
+R12
+R13
+R6
+R7
+!s100 o@@59DE=4l0UzQK@>:Q^d0
+!i10b 1
+!s85 0
+vtestcase
+VA=aIojomi4F3@:jkhkFf91
+r1
+31
+I^L73K52_3fHFRSfXdN]lR2
+R1
+w1509950067
+8../testcase.v
+F../testcase.v
+F../t_send_data_message_source_cap.v
+L0 25
+R2
+o-nocoverage -L mtiAvm -L mtiOvm -L mtiUvm -L mtiUPF
+!s10a 1509950067
+!s90 -reportprogress|300|-nocoverage|-incr|../testcase.v|
+!s102 -nocoverage
+!s100 9=_4iA9JDCZ82]kk:1bXl0
+!s108 1509950076.322000
+!s107 ../t_send_data_message_source_cap.v|../testcase.v|
+!i10b 1
+!s85 0
